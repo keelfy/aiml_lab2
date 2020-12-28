@@ -1,0 +1,585 @@
+= Лабораторная работа №2. Основы машинного обучения.
+
+Написал: Егор Кузьмин ИДБ-18-10
+
+== Часть №1. Визуализация данных. Градиентный спуск.
+
+=== Задание №1
+.Начало
+[source,python]
+----
+import matplotlib
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import sklearn
+
+dataset = pd.read_csv("testdata.csv", index_col=0)
+print(dataset)
+----
+
+.Результат
+[source,bash]
+----
+    sex  weight  height  repwt  repht
+1     M      77     182   77.0  180.0
+2     F      58     161   51.0  159.0
+3     F      53     161   54.0  158.0
+4     M      68     177   70.0  175.0
+5     F      59     157   59.0  155.0
+..   ..     ...     ...    ...    ...
+196   M      74     175   71.0  175.0
+197   M      83     180   80.0  180.0
+198   M      81     175    NaN    NaN
+199   M      90     181   91.0  178.0
+200   M      79     177   81.0  178.0
+
+[200 rows x 5 columns]
+----
+
+.a) Разделите датасет на 2 выборки (train, test) из 100 человек, с сохранением пропорции полов.
+[source,python]
+----
+from sklearn.model_selection import train_test_split
+
+def proportion(sex):
+    male = 0;
+    female = 0;
+    for s in sex:
+        if(s == "M"):
+            male += 1;
+        else:
+            female += 1;
+    return male/(male+female)
+
+
+prop = proportion(dataset["sex"])
+print('prop = ', prop)
+
+train, test = train_test_split(dataset,test_size = 0.5,stratify = dataset['sex'])
+print('train = ', proportion(train['sex']))
+print('test = ', proportion(test['sex']))
+----
+
+.Результат
+[source,bash]
+----
+prop = 0.44
+train = 0.44
+test = 0.44
+----
+
+.б) Очистите выборки от выбросов - людей с нереалистичным ростом/весом
+[source, python]
+----
+import numpy as np
+def delete_anomalies(data):
+    data_std = np.std(data)
+    data_mean = np.mean(data)
+    anomaly_cut_off = data_std * 3
+
+    lower_limit  = data_mean - anomaly_cut_off
+    upper_limit = data_mean + anomaly_cut_off
+    col = data.columns[1:]
+    data = data[((data[col] > lower_limit) & (data[col] < upper_limit)).all(1)]
+    return data
+
+
+plt.scatter(train["weight"],train['height'], c = pd.get_dummies(train, columns=['sex'])['sex_M'])
+----
+
+.Результат
+image::images/Screenshot_1.png[]
+
+
+[source, python]
+----
+df = train
+df = delete_anomalies(df)
+train = df
+plt.scatter(train["weight"],train['height'], c = pd.get_dummies(train, columns=['sex'])['sex_M'])
+----
+
+.Результат
+image::images/Screenshot_2.png[]
+
+[source, python]
+----
+print(train)
+----
+
+.Результат
+[source, bash]
+----
+    sex  weight  height  repwt  repht
+65    M      97     189   98.0  185.0
+27    F      63     169   61.0  168.0
+42    M      80     178   80.0  178.0
+46    F      54     160   55.0  158.0
+71    F      62     175   61.0  171.0
+..   ..     ...     ...    ...    ...
+147   F      55     165   55.0  165.0
+99    F      52     159   52.0  153.0
+78    F      63     160   64.0  158.0
+170   F      53     158   50.0  155.0
+50    F      75     162   75.0  158.0
+
+[90 rows x 5 columns]
+----
+
+[source, python]
+----
+plt.scatter(test["weight"], test['height'], c=pd.get_dummies(test, columns=['sex'])['sex_M'])
+----
+
+.Результат
+image::images/Screenshot_3.png[]
+
+[source, python]
+----
+df = test
+df = delete_anomalies(df)
+test = df
+plt.scatter(test["weight"],test['height'], c = pd.get_dummies(test, columns=['sex'])['sex_M'])
+----
+
+.Результат
+image::images/Screenshot_4.png[]
+
+[source,python]
+----
+print(test)
+----
+
+.Результат
+[source, bash]
+----
+    sex  weight  height  repwt  repht
+53    M      74     169   73.0  170.0
+96    F      56     165   57.0  160.0
+180   M      68     174   68.0  173.0
+29    F      39     157   41.0  153.0
+175   M      62     168   64.0  168.0
+..   ..     ...     ...    ...    ...
+187   F      60     172   55.0  168.0
+129   F      68     171   68.0  169.0
+168   F      66     166   66.0  165.0
+18    F      62     168   62.0  165.0
+89    F      57     163   59.0  160.0
+
+[93 rows x 5 columns]
+----
+
+.Удаление кривых значений
+[source,python]
+----
+train = train.dropna()
+print(train)
+----
+
+.Результат
+[source,bash]
+----
+[88 rows x 5 columns]
+    sex  weight  height  repwt  repht
+10    M      65     171   64.0  170.0
+95    M      88     189   87.0  185.0
+185   M      70     173   70.0  173.0
+87    M      62     178   66.0  175.0
+129   F      68     171   68.0  169.0
+..   ..     ...     ...    ...    ...
+161   F      51     163   50.0  160.0
+199   M      90     181   91.0  178.0
+32    M      75     178   73.0  175.0
+54    M     102     185  107.0  185.0
+192   M      89     173   86.0  173.0
+
+[89 rows x 5 columns]
+----
+
+.Удаление кривых значений
+[source,python]
+----
+test = test.dropna()
+print(test)
+----
+
+.Результат
+[source, bash]
+----
+    sex  weight  height  repwt  repht
+196   M      74     175   71.0  175.0
+59    M      75     172   70.0  169.0
+66    F      60     162   59.0  160.0
+169   M      96     191   95.0  188.0
+179   M      81     178   82.0  175.0
+..   ..     ...     ...    ...    ...
+157   M      69     172   68.0  174.0
+118   M      96     184   94.0  183.0
+89    F      57     163   59.0  160.0
+145   F      64     171   66.0  171.0
+74    F      56     163   57.0  159.0
+
+[86 rows x 5 columns]
+----
+
+.в) Отобразите train-выборку на в виде точек на графике
+[source,python]
+----
+plt.scatter(train["weight"], train['height'], c=train['sex'] == 'M')
+s = plt.scatter(train["weight"], train['height'], c=train['sex'] == 'M')
+plt.xlabel('weight')
+plt.ylabel('height')
+plt.title('train-выборка')
+text_labels = ['F','M']
+plt.legend(s.legend_elements()[0], text_labels, title='sex', loc='upper left')
+plt.show()
+----
+
+.Результат
+image::images/Screenshot_5.png[]
+
+.г) Постройте гистограммы всех
+[source,python]
+----
+train['height'].hist()
+train['weight'].hist()
+----
+
+.Результат
+image::images/Screenshot_6.png[]
+
+.Гистограммы только женщин
+[source, python]
+----
+train_female = train.loc[train['sex'] == 'F']
+train_female['height'].hist()
+train_female['weight'].hist()
+----
+
+.Результат
+image::images/Screenshot_7.png[]
+
+.Гистограммы только мужчин
+[source, python]
+----
+train_female = train.loc[train['sex'] == 'M']
+train_female['height'].hist()
+train_female['weight'].hist()
+----
+
+.Результат
+image::images/Screenshot_8.png[]
+
+.repwt-weight по всем
+[source, python]
+----
+(train['repwt'] - train['weight']).hist()
+----
+
+.Результат
+image::images/Screenshot_9.png[]
+
+.repwt-weight только женщины
+[source, python]
+----
+(train_female['repwt'] - train_female['weight']).hist()
+----
+
+.Результат
+image::images/Screenshot_10.png[]
+
+.repwt-weight только мужчины
+[source, python]
+----
+(train_male['repwt'] - train_male['weight']).hist()
+----
+
+.Результат
+image::images/Screenshot_11.png[]
+
+.repht-height в целом
+[source, python]
+----
+(train['repht']-train['height']).hist()
+----
+
+.Результат
+image::images/Screenshot_12.png[]
+
+.repht-height только женщины
+[source, python]
+----
+(train_female['repht'] - train_female['height']).hist()
+----
+
+.Результат
+image::images/Screenshot_13.png[]
+
+.repht-height только мужчины
+[source, python]
+----
+(train_male['repht'] - train_male['height']).hist()
+----
+
+.Результат
+image::images/Screenshot_14.png[]
+
+.д) Постройте генератор данных (sex, height, weight) используя следующую модель
+[source,python]
+----
+import scipy
+
+
+class DataGenerator:
+    def __init__(self):
+        self.p_woman = None
+        self.mean_height = {
+            "F": None,
+            "M": None
+        }
+        self.mean_weight = {
+            "F": None,
+            "M": None
+        }
+        self.covariance = {
+            "F": None,
+            "M": None
+        }
+
+
+    def fit(self, X_train):
+        woman_xtr = X_train.loc[train['sex'] == 'F']
+        man_xtr = X_train.loc[train['sex'] == 'M']
+        self.p_woman = len(woman_xtr)/len(X_train)
+        self.mean_height['M'] = np.mean(man_xtr['height'])
+        self.mean_height['F'] = np.mean(woman_xtr['height'])
+        self.mean_weight['M'] = np.mean(man_xtr['weight'])
+        self.mean_weight['F'] = np.mean(woman_xtr['weight'])
+        self.covariance['M'] =  np.cov(man_xtr['height'],man_xtr['weight'])
+        self.covariance['F'] = np.cov(woman_xtr['height'],woman_xtr['weight'])
+
+
+    def generate_data(self, n):
+        result = []
+        columns_names = ['sex','weight','height']
+        for i in range(n):
+            sex = np.random.choice(['F','M'],p=[self.p_woman, 1-self.p_woman])
+            height,weight = np.random.multivariate_normal(mean=[self.mean_height[sex],self.mean_weight[sex]],cov = self.covariance[sex])
+            height, weight = np.around(height), np.around(weight)
+            result.append([sex,weight,height])
+
+        df = pd.DataFrame(result, columns=columns_names)
+        return df
+
+    def log_likelihood(self, X):
+        man_X = X[(X['sex'] == 'M')][['height', 'weight']]
+        woman_X = X[(X['sex'] == 'F')][['height', 'weight']]
+        man_log = np.log((1-self.p_woman) * scipy.stats.multivariate_normal.pdf(
+            man_X, mean=[self.mean_height['M'], self.mean_weight['M']], cov=self.covariance['M']))
+        woman_log = np.log(self.p_woman * scipy.stats.multivariate_normal.pdf(
+            woman_X, mean=[self.mean_height['F'], self.mean_weight['F']], cov=self.covariance['F']))
+
+        return np.concatenate([man_log, woman_log])
+
+
+    def mean_log_likelihood(self, X):
+        return self.log_likelihood(X).mean()
+
+
+generator = DataGenerator()
+generator.fit(train)
+df = generator.generate_data(100)
+print(df)
+----
+
+.Результат
+[source,bash]
+----
+   sex  weight  height
+0    F    60.0   163.0
+1    M    74.0   174.0
+2    M    75.0   185.0
+3    F    62.0   173.0
+4    M    84.0   181.0
+..  ..     ...     ...
+95   M    58.0   173.0
+96   M    86.0   183.0
+97   M    47.0   170.0
+98   M    61.0   172.0
+99   M    84.0   176.0
+
+[100 rows x 3 columns]
+----
+
+
+[source, python]
+----
+generated_log = generator.mean_log_likelihood(df)
+train_log = generator.mean_log_likelihood(train)
+test_log = generator.mean_log_likelihood(test)
+print(f"Generated = {generated_log}")
+print(f"train = {train_log}")
+print(f"test = {test_log}")
+----
+
+.Результат
+[source,bash]
+----
+Generated = -7.2596397043507235
+train = -7.260979815861823
+test = -7.276390914821796
+----
+
+[source,python]
+----
+import seaborn as sns
+sns.scatterplot(x=df['height'], y=df['weight'], hue=df['sex'] )
+plt.title('Generated data')
+----
+
+.Результат
+image::images/Screenshot_15.png[]
+
+=== Задание №2
+
+.а) Обучите градиентным спуском линейную модель вида
+[source,python]
+----
+class grad_des_byonesign:
+    def __init__(self):
+        self.x_min = None
+        self.x_max = None
+        self.y_min = None
+        self.y_max = None
+        self.wb_trajectory = {'w':[], 'b':[]}
+
+    def update_w_and_b(self,heights, weights, w, b, alpha):
+        dl_dw = 0.0
+        dl_db = 0.0
+        N = len(heights)
+
+        for i in range(N):
+            dl_dw += -2*heights[i]*(weights[i] - (w*heights[i] + b))
+            dl_db += -2*(weights[i] - (w*heights[i] + b))
+
+
+        w = w - (1/float(N))*dl_dw*alpha
+        b = b - (1/float(N))*dl_db*alpha
+
+        return w, b
+
+    def train(self,heights, weights, w, b, alpha, stage):
+        self.x_min = heights.min()
+        self.x_max = heights.max()
+        self.y_min = weights.min()
+        self.y_max = weights.max()
+        heights = (heights - heights.min())/(heights.max() - heights.min())
+        weights = (weights - weights.min())/(weights.max() - weights.min())
+        for e in range(stage):
+            w, b = self.update_w_and_b(heights, weights, w, b, alpha)
+
+            if e % 400 == 0:
+                print("stage:", e, "loss: ", self.avg_loss(heights, weights, w, b))
+                self.wb_trajectory['w'].append(w)
+                self.wb_trajectory['b'].append(b)
+
+        return w, b
+
+    def get_trajectory(self):
+        trajx  = {'w':[], 'b':[]}
+        trajy  = {'w':[], 'b':[]}
+        trajx['w'] = self.wb_trajectory['w'][:-1]
+        trajx['b'] = self.wb_trajectory['b'][:-1]
+        trajy['w'] = self.wb_trajectory['w'][1:]
+        trajy['b'] = self.wb_trajectory['b'][1:]
+        trajy['w'] = [trajy['w'][i] - trajx['w'][i] for i in range(len(trajx['w']))]
+        trajy['b'] = [trajy['b'][i] - trajx['b'][i] for i in range(len(trajx['b']))]
+        return trajx,trajy
+
+
+    def avg_loss(self,heights, weights, w, b):
+        N = len(heights)
+        total_error = 0.0
+        for i in range(N):
+            total_error += (weights[i] - (w*heights[i] + b))**2
+        return total_error / float(N)
+
+    def predict(self,x, w, b):
+        x = (x - self.x_min)/(self.x_max - self.x_min)
+        return (w*x + b)*(self.y_max - self.y_min) + self.y_min
+
+
+x = train["height"].values.astype(np.float)
+y = train["weight"].values.astype(np.float)
+x_norm = (x - x.min())/(x.max() - x.min())
+y_norm = (y - y.min())/(y.max() - y.min())
+
+gd = grad_des_byonesign()
+w, b = gd.train(x,y , 0.0 , 0.0 , 0.01 ,10000)
+print(f'W = {w}')
+print(f'b = {b}')
+----
+
+.Результат
+[source,bash]
+----
+stage: 0 loss:  0.2025446169474731
+stage: 400 loss:  0.02592171919556439
+stage: 800 loss:  0.02199224985842312
+stage: 1200 loss:  0.019729049361736837
+stage: 1600 loss:  0.0184255459703235
+stage: 2000 loss:  0.01767478566697703
+stage: 2400 loss:  0.01724238093616173
+stage: 2800 loss:  0.016993334935197096
+stage: 3200 loss:  0.016849895453211007
+stage: 3600 loss:  0.01676728065549193
+stage: 4000 loss:  0.01671969818581441
+stage: 4400 loss:  0.016692292787712337
+stage: 4800 loss:  0.01667650849046542
+stage: 5200 loss:  0.016667417433344062
+stage: 5600 loss:  0.0166621813865128
+stage: 6000 loss:  0.016659165655112877
+stage: 6400 loss:  0.016657428727203438
+stage: 6800 loss:  0.016656428333546778
+stage: 7200 loss:  0.01665585215104501
+stage: 7600 loss:  0.016655520295406834
+stage: 8000 loss:  0.016655329161236247
+stage: 8400 loss:  0.016655219076407286
+stage: 8800 loss:  0.016655155672414546
+stage: 9200 loss:  0.01665511915451888
+stage: 9600 loss:  0.016655098121826063
+W = 0.7759871606594743
+b = -0.019078723416815293
+----
+
+[source,python]
+----
+sns.scatterplot(x=x, y=y , hue = train['sex'])
+sns.lineplot(x=x, y=gd.predict(x,w,b))
+----
+
+.Результат
+image::images/Screenshot_16.png[]
+
+.Визуализация минимизируемого критерия
+[source,python]
+----
+ww,bb = np.mgrid[-0.2:1:100j,-0.2:1:100j]
+
+criterion = np.zeros(shape = (100,100))
+
+for i in range(100):
+    for j in range(100):
+        criterion[i,j] = gd.avg_loss(x_norm, y_norm, ww[i,j], bb[i,j])
+trajx,trajy = gd.get_trajectory()
+
+plt.title("Contour Plot of Gradient Descent")
+plt.contourf(ww, bb, criterion)
+for i in range(len(trajx['w']) - 1):
+    plt.arrow(trajx['w'][i], trajx['b'][i],trajy['w'][i],
+              trajy['b'][i], color='RED',width=0.005)
+----
+
+.Результат
+image::images/Screenshot_17.png[]
